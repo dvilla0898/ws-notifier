@@ -347,3 +347,4 @@ Vercel **no** ejecuta los tests: de eso se encarga la CI. Con la protección de 
 - Sustituye la API simulada por un backend real cambiando solo `src/lib/mock-api/*`.
 
 - Practiqué el flujo de PR 🎉
+- Practiqué el flujo de PR parte B🎉🎉🎉
