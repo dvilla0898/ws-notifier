@@ -2,8 +2,8 @@
 
 import type { ReactNode } from "react";
 
-import { AuthGuard } from "@/components/auth/auth-guard";
-import { DashboardShell } from "@/components/layout/dashboard-shell";
+import { AuthGuard } from "@/modules/auth/presentation/components/auth-guard";
+import { DashboardShell } from "@/app-shell/dashboard-shell";
 
 /**
  * Layout de todas las rutas /dashboard/*.

@@ -2,10 +2,10 @@
 
 import { Suspense } from "react";
 
-import { LoadingState } from "@/components/feedback/loading-state";
-import { PageHeader } from "@/components/layout/page-header";
-import { EditProductView } from "@/components/products/edit-product-view";
-import { useTranslations } from "@/i18n/use-translations";
+import { LoadingState } from "@/shared/presentation/components/loading-state";
+import { PageHeader } from "@/shared/presentation/components/page-header";
+import { EditProductView } from "@/modules/products/presentation/components/edit-product-view";
+import { useTranslations } from "@/shared/i18n/use-translations";
 
 export default function EditProductPage() {
   const t = useTranslations();

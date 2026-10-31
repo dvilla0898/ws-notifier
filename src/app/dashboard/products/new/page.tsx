@@ -2,11 +2,11 @@
 
 import { useRouter } from "next/navigation";
 
-import { PageHeader } from "@/components/layout/page-header";
-import { ProductForm } from "@/components/products/product-form";
-import { Card, CardContent } from "@/components/ui/card";
-import { useTranslations } from "@/i18n/use-translations";
-import { useProductsStore } from "@/stores/products-store";
+import { PageHeader } from "@/shared/presentation/components/page-header";
+import { ProductForm } from "@/modules/products/presentation/components/product-form";
+import { Card, CardContent } from "@/shared/presentation/ui/card";
+import { useTranslations } from "@/shared/i18n/use-translations";
+import { useProductsStore } from "@/modules/products/presentation/products.store";
 
 export default function NewProductPage() {
   const t = useTranslations();

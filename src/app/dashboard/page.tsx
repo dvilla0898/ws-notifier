@@ -3,22 +3,22 @@
 import Link from "next/link";
 import { Package, ShoppingCart } from "lucide-react";
 
-import { PageHeader } from "@/components/layout/page-header";
-import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/shared/presentation/components/page-header";
+import { Button } from "@/shared/presentation/ui/button";
 import {
   Card,
   CardDescription,
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { useTranslations } from "@/i18n/use-translations";
-import { useAuthStore } from "@/stores/auth-store";
+} from "@/shared/presentation/ui/card";
+import { useTranslations } from "@/shared/i18n/use-translations";
+import { selectUser, useAuthStore } from "@/modules/auth/presentation/auth.store";
 
 /** Inicio del panel: bienvenida y accesos a los módulos. */
 export default function DashboardPage() {
   const t = useTranslations();
-  const user = useAuthStore((state) => state.user);
+  const user = useAuthStore(selectUser);
 
   return (
     <div className="space-y-6">
