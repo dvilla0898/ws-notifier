@@ -1,0 +1,62 @@
+[
+  {
+    "id": "p1",
+    "name": "Wireless Mouse",
+    "sku": "MOU-001",
+    "category": "Accessories",
+    "price": 19.99,
+    "stock": 120,
+    "createdAt": "2026-01-10T10:00:00.000Z",
+    "updatedAt": "2026-01-10T10:00:00.000Z"
+  },
+  {
+    "id": "p2",
+    "name": "Mechanical Keyboard",
+    "sku": "KEY-002",
+    "category": "Accessories",
+    "price": 89.5,
+    "stock": 45,
+    "createdAt": "2026-01-12T10:00:00.000Z",
+    "updatedAt": "2026-01-12T10:00:00.000Z"
+  },
+  {
+    "id": "p3",
+    "name": "27-inch Monitor",
+    "sku": "MON-003",
+    "category": "Displays",
+    "price": 249,
+    "stock": 18,
+    "createdAt": "2026-02-01T10:00:00.000Z",
+    "updatedAt": "2026-02-01T10:00:00.000Z"
+  },
+  {
+    "id": "p4",
+    "name": "USB-C Hub",
+    "sku": "HUB-004",
+    "category": "Accessories",
+    "price": 34.9,
+    "stock": 60,
+    "createdAt": "2026-02-15T10:00:00.000Z",
+    "updatedAt": "2026-02-15T10:00:00.000Z"
+  },
+  {
+    "id": "p5",
+    "name": "Laptop Stand",
+    "sku": "STD-005",
+    "category": "Furniture",
+    "price": 42,
+    "stock": 0,
+    "createdAt": "2026-03-03T10:00:00.000Z",
+    "updatedAt": "2026-03-03T10:00:00.000Z"
+  },
+  {
+    "id": "p6",
+    "name": "Noise-Cancelling Headphones",
+    "sku": "AUD-006",
+    "category": "Audio",
+    "price": 159.99,
+    "stock": 25,
+    "createdAt": "2026-03-20T10:00:00.000Z",
+    "updatedAt": "2026-03-20T10:00:00.000Z"
+  }
+]
