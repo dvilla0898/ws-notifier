@@ -345,3 +345,5 @@ Vercel **no** ejecuta los tests: de eso se encarga la CI. Con la protección de 
 - Agrega paginación u ordenamiento por columnas a la tabla de productos (y su test).
 - Cambia la latencia en `src/lib/mock-api/delay.ts` para ver cómo se comporta la UI con una red lenta.
 - Sustituye la API simulada por un backend real cambiando solo `src/lib/mock-api/*`.
+
+- Practiqué el flujo de PR 🎉
