@@ -1,8 +1,11 @@
-import { DEFAULT_LOCALE } from "@/i18n/config";
-import { setApiDelay } from "@/lib/mock-api/delay";
-import { initialAuthState, useAuthStore } from "@/stores/auth-store";
-import { useLocaleStore } from "@/stores/locale-store";
-import { initialProductsState, useProductsStore } from "@/stores/products-store";
+import { initialAuthState, useAuthStore } from "@/modules/auth/presentation/auth.store";
+import {
+  initialProductsState,
+  useProductsStore,
+} from "@/modules/products/presentation/products.store";
+import { DEFAULT_LOCALE } from "@/shared/i18n/config";
+import { useLocaleStore } from "@/shared/i18n/locale.store";
+import { setApiDelay } from "@/shared/infrastructure/delay";
 
 /**
  * Deja la app "como recién instalada" antes de cada test.
@@ -19,6 +22,6 @@ export function resetAppState(): void {
   // Después de resetear los stores (persist escribe en localStorage al hacer setState).
   window.localStorage.clear();
 
-  // Sin latencia: los tests no esperan 1 s por llamada. delay.test.ts prueba el segundo real.
+  // Sin latencia: los tests no esperan 1 s por llamada. simulated-api-call.test.ts prueba el segundo real.
   setApiDelay(0);
 }

@@ -3,9 +3,9 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
-import { LoadingState } from "@/components/feedback/loading-state";
-import { useTranslations } from "@/i18n/use-translations";
-import { selectIsAuthenticated, useAuthStore } from "@/stores/auth-store";
+import { LoadingState } from "@/shared/presentation/components/loading-state";
+import { useTranslations } from "@/shared/i18n/use-translations";
+import { selectIsAuthenticated, useAuthStore } from "@/modules/auth/presentation/auth.store";
 
 /** Ruta "/": solo decide a dónde ir según haya sesión o no. */
 export default function HomePage() {

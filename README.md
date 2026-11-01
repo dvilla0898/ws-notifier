@@ -1,7 +1,10 @@
 # ws-notifier · Panel administrativo (tutorial)
 
 Panel administrativo **solo frontend** construido como proyecto de aprendizaje.
-Tiene inicio de sesión, rutas protegidas y un módulo de **Productos** con CRUD completo.
+Tiene inicio de sesión, rutas protegidas y un módulo de **Productos** con CRUD completo,
+organizado con **arquitectura hexagonal (Clean Architecture)**, **módulos** y
+**un caso de uso por cada acción**.
+
 No usa base de datos: una **API simulada** guarda los datos en `localStorage`
 y tarda **1 segundo** en responder para imitar un servidor real.
 
@@ -14,7 +17,7 @@ y tarda **1 segundo** en responder para imitar un servidor real.
 1. [Tecnologías y por qué](#1-tecnologías-y-por-qué)
 2. [Primer arranque](#2-primer-arranque)
 3. [Scripts disponibles](#3-scripts-disponibles)
-4. [Estructura de carpetas](#4-estructura-de-carpetas)
+4. [Arquitectura](#4-arquitectura)
 5. [Cómo funciona por dentro](#5-cómo-funciona-por-dentro)
 6. [Tests: qué se prueba y cómo](#6-tests-qué-se-prueba-y-cómo)
 7. [Flujo de trabajo con Pull Requests](#7-flujo-de-trabajo-con-pull-requests)
@@ -28,13 +31,15 @@ y tarda **1 segundo** en responder para imitar un servidor real.
 | Pieza | Herramienta | Para qué la usamos |
 | --- | --- | --- |
 | Framework | **Next.js 15** (App Router) con `output: "export"` | Rutas por carpetas y build a un sitio **estático** (HTML + JS) |
-| Lenguaje | **TypeScript** | Tipos para productos, usuarios y traducciones; errores en el editor, no en producción |
+| Lenguaje | **TypeScript** | Tipos para entidades, value objects, DTOs y traducciones |
+| Arquitectura | **Hexagonal / Clean Architecture** | Dominio aislado, un caso de uso por acción, adaptadores intercambiables |
 | Estilos | **Tailwind CSS v4** | Clases utilitarias (`flex`, `gap-4`, `text-sm`...) |
-| Componentes | **shadcn/ui** | Botones, inputs, tarjetas y tablas accesibles. El código vive en `src/components/ui` y es tuyo |
-| Estado global | **Zustand** | Stores pequeños para sesión, idioma y productos, sin `Provider` ni boilerplate |
-| Datos | **JSON + localStorage** | Datos semilla en `src/data/*.json`; los cambios persisten al recargar |
+| Componentes | **shadcn/ui** | Botones, inputs, tarjetas y tablas accesibles. El código vive en `src/shared/presentation/ui` y es tuyo |
+| Formularios | **react-hook-form** | Estado del formulario y validación al salir del campo, con las reglas del dominio |
+| Estado de pantalla | **Zustand** | Stores pequeños por módulo: cargando, lista, errores |
+| Datos | **JSON + localStorage** | Datos semilla en `src/modules/*/infrastructure/seed/*.json`; los cambios persisten al recargar |
 | Idiomas | Diccionarios propios (inglés por defecto + español) | Traducciones tipadas, sin librerías extra |
-| Tests | **Vitest** + **Testing Library** + **jsdom** | Tests rápidos de lógica, stores y componentes |
+| Tests | **Vitest** + **Testing Library** + **jsdom** | Tests de value objects, casos de uso, adaptadores y componentes |
 | Paquetes | **pnpm** | Instalaciones rápidas y un único `pnpm-lock.yaml` |
 | CI | **GitHub Actions** | Lint, typecheck, tests y build en cada PR |
 | Hosting | **Vercel** | Despliega automáticamente cada PR (preview) y `master` (producción) |
@@ -80,131 +85,243 @@ Abre <http://localhost:3000> e inicia sesión con `admin` / `admin123`.
 
 ---
 
-## 4. Estructura de carpetas
+## 4. Arquitectura
+
+### 4.1 La idea en una frase
+
+**El negocio (dominio y casos de uso) no sabe nada de React, Next.js, Zustand ni localStorage.**
+Todo lo técnico se "enchufa" desde afuera a través de **puertos** (interfaces) y **adaptadores**
+(implementaciones). Por eso se llama *hexagonal* o *puertos y adaptadores*.
+
+```
+              ┌──────────────── presentation ────────────────┐
+              │  Componentes React + store de Zustand         │
+              └──────────────────────┬────────────────────────┘
+                                     │ productsContainer.createProduct.execute(input)
+                                     ▼
+┌───────────────────────────── application ─────────────────────────────┐
+│  CreateProductUseCase ──usa──► «interface» CreateProductRepository    │
+│  DeleteProductUseCase ──usa──► «interface» DeleteProductRepository    │
+│  ...un caso de uso por acción, cada uno con SU puerto                  │
+└──────────────┬─────────────────────────────────────▲──────────────────┘
+               │ usa                                 │ implementa (todos los puertos)
+               ▼                                     │
+┌────────── domain ──────────┐     ┌──────────── infrastructure ─────────────┐
+│ Product · Sku · Price      │     │ LocalStorageProductRepository           │
+│ Stock · ProductErrors      │     │ (un solo adaptador por módulo)           │
+└────────────────────────────┘     └─────────────────────────────────────────┘
+
+Las dependencias siempre apuntan HACIA ADENTRO (hacia domain).
+```
+
+| Capa | Qué contiene | Puede importar |
+| --- | --- | --- |
+| **domain** | Entidades, value objects, errores de negocio. Código puro | Solo `shared/domain` |
+| **application** | Casos de uso, sus puertos y los DTOs | `domain` |
+| **infrastructure** | Adaptadores: localStorage, API simulada, datos semilla | `application` (puertos) y `domain` |
+| **presentation** | Componentes React, stores de Zustand, resolvers de formularios | Todo lo anterior y el contenedor del módulo |
+
+Estas reglas las **vigila ESLint** (`eslint.config.mjs`, regla `no-restricted-imports`):
+si importas React en el dominio o un adaptador en un caso de uso, `pnpm lint` falla.
+
+### 4.2 Estructura de carpetas
 
 ```
 src/
-├── app/                        # Rutas (cada carpeta con page.tsx es una URL)
-│   ├── layout.tsx              # Layout raíz: <html>, estilos y <AppProviders>
-│   ├── page.tsx                # "/"  -> redirige a /login o /dashboard
-│   ├── login/page.tsx          # "/login"
-│   └── dashboard/
-│       ├── layout.tsx          # Protege /dashboard/* y dibuja menú + cabecera
-│       ├── page.tsx            # "/dashboard" (inicio del panel)
-│       └── products/
-│           ├── page.tsx        # "/dashboard/products" (listado)
-│           ├── new/page.tsx    # "/dashboard/products/new"
-│           └── edit/page.tsx   # "/dashboard/products/edit?id=p1"
-├── components/
-│   ├── ui/                     # Componentes base de shadcn/ui
-│   ├── auth/                   # LoginForm, AuthGuard
-│   ├── layout/                 # DashboardShell, PageHeader, LanguageSwitcher
-│   ├── products/               # ProductsTable, ProductForm, EditProductView
-│   ├── feedback/               # LoadingState
-│   └── providers/              # AppProviders (rehidratación de stores)
-├── stores/                     # Stores de Zustand (auth, products, locale)
-├── lib/
-│   ├── mock-api/               # API simulada: delay, errores, "base de datos"
-│   ├── validation/             # Reglas de validación de productos
-│   └── utils.ts                # cn(): helper de clases de shadcn
-├── i18n/                       # Idiomas: config, diccionarios y hooks
-├── data/                       # Datos semilla (JSON)
-├── types/                      # Tipos compartidos (User, Product...)
-└── test/                       # Utilidades de test (router falso, reseteo de estado)
+├── app/                          # Rutas de Next.js: solo conectan, sin lógica
+├── app-shell/                    # Lo que une módulos: menú del panel y AppProviders
+├── modules/
+│   ├── auth/
+│   │   ├── domain/               # Session, User, value objects (Username, Password, Credentials), AuthErrors
+│   │   ├── application/use-cases/
+│   │   │   ├── login/                # login.port.ts + login.use-case.ts + test
+│   │   │   ├── logout/
+│   │   │   └── get-current-session/
+│   │   ├── infrastructure/       # MockAuthGateway, LocalStorageSessionStore, seed/users.json
+│   │   ├── presentation/         # LoginForm, AuthGuard, auth.store, login-form.resolver
+│   │   └── auth.container.ts     # ⚙️ conecta adaptadores con casos de uso
+│   └── products/
+│       ├── domain/               # Product (entidad), Sku, Price, Stock, ProductName, Category, ProductErrors
+│       ├── application/
+│       │   ├── product.dto.ts
+│       │   └── use-cases/
+│       │       ├── create-product/   # create-product.port.ts + .use-case.ts + .test.ts
+│       │       ├── update-product/
+│       │       ├── delete-product/
+│       │       ├── get-product/
+│       │       ├── list-products/
+│       │       └── search-products/
+│       ├── infrastructure/       # LocalStorageProductRepository, InMemoryProductRepository, seed/products.json
+│       ├── presentation/         # ProductsTable, ProductForm, EditProductView, products.store, product-form.resolver
+│       └── products.container.ts
+├── shared/
+│   ├── domain/                   # Result, AppError (respuesta y errores centralizados)
+│   ├── infrastructure/           # delay, simulateApiCall, LocalStorageCollection
+│   ├── i18n/                     # Diccionarios, useTranslations, translateError, locale.store
+│   ├── presentation/             # ui/ (shadcn), components/ (FormField, PageHeader...), forms/
+│   └── lib/utils.ts              # cn(): helper de clases
+└── test/                         # Router falso y reseteo de estado para los tests
 ```
 
-Los tests viven junto al código que prueban, en carpetas `__tests__/`.
+### 4.3 Decisiones de diseño
+
+**Un puerto por caso de uso, un adaptador por módulo.** Cada caso de uso declara en su
+`*.port.ts` *solo* lo que necesita (principio de segregación de interfaces). Un único
+adaptador por módulo implementa todos esos puertos, así "cómo se guarda un producto" vive
+en un solo archivo y no se duplica.
+
+```ts
+// create-product.port.ts: solo lo que necesita crear un producto
+export interface CreateProductRepository {
+  nextId(): string;
+  existsBySku(sku: Sku): Promise<boolean>;
+  save(product: Product): Promise<void>;
+}
+
+// local-storage-product.repository.ts: un adaptador, todos los puertos
+export class LocalStorageProductRepository
+  implements CreateProductRepository, UpdateProductRepository, DeleteProductRepository, /* ... */ {}
+```
+
+**Un contenedor por módulo.** `products.container.ts` y `auth.container.ts` son la *raíz de
+composición*: el único lugar que decide qué adaptador usa cada caso de uso. Cuando llegue
+*ventas*, tendrá su propio `sales.container.ts`.
+
+**Respuesta centralizada: `Result` + `AppError`.** Ningún caso de uso lanza excepciones hacia
+la UI; todos devuelven `{ ok: true, value }` o `{ ok: false, error }`. El `AppError` lleva un
+`code` (que la UI traduce) y, si es de validación, el `field` y el `reason`.
+
+**Value objects.** `Sku`, `Price`, `Stock`, `ProductName`, `Category`, `Username` y `Password`
+tienen constructor privado y se crean con `X.create(valor)`, que devuelve un `Result`.
+Si existe un `Price`, es mayor que 0: nadie tiene que volver a validarlo.
+
+**La latencia es infraestructura.** Ni los casos de uso ni los repositorios esperan: el contenedor
+envuelve cada caso de uso con `simulateApiCall`, que espera 1 s **una vez por acción** y convierte
+cualquier excepción inesperada en `fail(AppError UNKNOWN)`.
+
+**Proporcionalidad.** Las lecturas (`list`, `get`, `search`) son casos de uso deliberadamente
+delgados: no tienen reglas que aplicar. Donde la arquitectura "paga" es en las escrituras con
+reglas (SKU único, validaciones) y, sobre todo, en módulos con lógica de negocio real, como lo será
+*ventas*. En un CRUD puro de producción, una versión más simple también sería válida.
+
+### 4.4 Dónde buscar cuando hay un bug
+
+| Síntoma | Archivo |
+| --- | --- |
+| "Acepta un SKU inválido" | `modules/products/domain/value-objects/sku.ts` |
+| "Deja crear dos productos con el mismo SKU" | `modules/products/application/use-cases/create-product/create-product.use-case.ts` |
+| "No se guarda al recargar la página" | `modules/products/infrastructure/local-storage-product.repository.ts` |
+| "El mensaje de error sale en el idioma equivocado" | `shared/i18n/dictionaries/*.ts` |
+| "El formulario no marca el campo" | `modules/products/presentation/forms/product-form.resolver.ts` |
+| "Se usa el adaptador equivocado" o "no hay latencia" | `modules/products/products.container.ts` |
+
+### 4.5 Cómo agregar un caso de uso nuevo (receta)
+
+Ejemplo: "duplicar un producto".
+
+1. **Dominio**: ¿hay una regla nueva? Agrégala a la entidad o a un value object (con su test).
+2. **Puerto**: crea `use-cases/duplicate-product/duplicate-product.port.ts` con solo los métodos que necesitas.
+3. **Caso de uso**: `duplicate-product.use-case.ts`, que recibe el puerto por constructor y devuelve un `Result`.
+4. **Test**: `duplicate-product.use-case.test.ts` con `InMemoryProductRepository` o un fake.
+5. **Adaptador**: añade el puerto al `implements` de `LocalStorageProductRepository` (y al de memoria).
+6. **Contenedor**: `duplicateProduct: simulateApiCall(new DuplicateProductUseCase(repository))`.
+7. **Presentación**: una acción en `products.store.ts` y el botón en el componente.
 
 ---
 
 ## 5. Cómo funciona por dentro
 
-### 5.1 El recorrido de una acción
-
-Todas las acciones siguen el mismo camino. Por ejemplo, al eliminar un producto:
+### 5.1 El recorrido de una acción: crear un producto
 
 ```
- ProductsTable          useProductsStore           products-api              localStorage
- (componente)           (Zustand)                  (API simulada)            ("base de datos")
-      │  deleteProduct(id)   │                           │                          │
-      │─────────────────────>│ set({ deletingId: id })   │                          │
-      │   (fila con spinner) │──────────────────────────>│ await delay() ⏱ 1 s      │
-      │                      │                           │─────────────────────────>│ escribe
-      │                      │<──────────────────────────│                          │
-      │                      │ quita el producto de items│                          │
-      │<─────────────────────│ return { ok: true }       │                          │
+ProductForm ─► products.store ─► productsContainer.createProduct ─► CreateProductUseCase
+ (valida con      (estado de        (simulateApiCall:                  │ Product.create() → value objects
+  el resolver)     pantalla)          espera 1 s)                      │ repository.existsBySku()
+                                                                       │ repository.save()
+                                                                       ▼
+                                                     LocalStorageProductRepository → localStorage
 ```
 
-Cada capa tiene **una sola responsabilidad**:
+1. **`ProductForm`** valida cada campo con `productFormResolver`, que llama a los value objects.
+2. Al enviar, la página llama a **`products.store.createProduct(input)`**.
+3. El store llama al **contenedor**, que espera 1 s (`simulateApiCall`) y ejecuta el **caso de uso**.
+4. El caso de uso crea la **entidad** (`Product.create`), comprueba el SKU único con su **puerto**
+   y guarda.
+5. Devuelve un **`Result`**: el store actualiza la lista; si hay error, el formulario lo muestra
+   **debajo del campo afectado** (por ejemplo, SKU repetido) o como error general.
 
-- **Componente**: muestra datos y reacciona a clics. No sabe de dónde vienen los datos.
-- **Store (Zustand)**: guarda el estado de la UI (`items`, `status`, `errorCode`...) y llama a la API.
-- **API simulada**: valida, aplica las reglas de negocio (SKU único) y persiste.
-  Si mañana hay un backend real, **solo cambia esta capa** (por llamadas `fetch`).
+### 5.2 Validación de formularios (react-hook-form + dominio)
 
-### 5.2 La API simulada (`src/lib/mock-api`)
+Hay **dos niveles** de validación y **una sola fuente de reglas**:
 
-- `delay.ts`: `await delay()` espera **1000 ms** antes de cada respuesta. Así puedes ver los
-  estados de carga ("Loading products...", "Signing in...", botones deshabilitados).
-- `storage.ts`: lee y escribe colecciones en `localStorage` (`ws-notifier:db:products`).
-  La primera vez se inicializa con `src/data/products.json`.
-- `errors.ts`: la API lanza `ApiError` con un **código** (`SKU_TAKEN`, `NOT_FOUND`...).
-  La UI nunca muestra el mensaje técnico: traduce el código al idioma activo.
-- `auth-api.ts` y `products-api.ts`: cada función equivale a un endpoint REST
-  (`listProducts` → `GET /products`, `createProduct` → `POST /products`, etc.).
+| Nivel | Dónde | Para qué |
+| --- | --- | --- |
+| Formulario | `presentation/forms/*.resolver.ts` | Avisar mientras se escribe, sin esperar 1 s a la API |
+| Dominio | `domain/value-objects/*.ts` | Garantizar que nada inválido entra al sistema |
 
-**Para empezar de cero** (volver a los datos semilla): en las herramientas de desarrollo del
-navegador → *Application* → *Local Storage*, borra las claves que empiezan por `ws-notifier:`.
+El *resolver* de react-hook-form **no define reglas propias** (como haría un esquema de zod):
+pregunta a los value objects. Si mañana el SKU admite 25 caracteres, se cambia en `sku.ts` y el
+formulario se actualiza solo.
+
+```ts
+const fieldRules = {
+  sku: (raw) => Sku.create(raw),
+  price: (raw) => Price.create(parseNumber(raw)),
+  // ...
+};
+```
+
+Comportamiento (`mode: "onTouched"`):
+- cada campo se valida **al salir de él**;
+- un campo con error se **revalida mientras lo corriges**;
+- al enviar se valida todo y el **foco va al primer campo con error**.
+
+Los errores se guardan como *código* (`required`, `SKU_TAKEN`...) y se traducen al mostrarse,
+así cambian de idioma aunque el formulario esté abierto.
 
 ### 5.3 Autenticación
 
-1. `LoginForm` llama a `useAuthStore.getState().login(usuario, contraseña)`.
-2. El store pasa a `status: "loading"`, espera a la API y guarda `user` + `token`.
-3. El middleware `persist` de Zustand guarda la sesión en `localStorage` (`ws-notifier:session`),
-   así que **recargar la página no cierra la sesión**.
-4. `src/app/dashboard/layout.tsx` envuelve todo el panel en `AuthGuard`: si no hay token,
-   redirige a `/login`.
+- **login**: `Credentials.create()` valida, `MockAuthGateway` comprueba el usuario de
+  `seed/users.json` y `LocalStorageSessionStore` guarda la sesión (`ws-notifier:session`).
+- **get-current-session**: al abrir la app, `AppProviders` lo ejecuta para recuperar la sesión.
+  Mientras tanto muestra un loader, así ninguna página decide "no hay sesión" antes de leerla.
+- **logout**: avisa a la "API" y borra la sesión.
+- **AuthGuard** protege `/dashboard/*` y redirige a `/login` si no hay sesión.
 
-> ⚠️ Esto es una simulación educativa. Las contraseñas en un JSON del frontend y la protección de
-> rutas en el navegador **no son seguridad real**: con un backend, el servidor debe validar el
-> token en cada petición.
+> ⚠️ Simulación educativa: contraseñas en un JSON del frontend y protección de rutas en el
+> navegador **no son seguridad real**. Con un backend, el servidor valida el token en cada petición.
 
-**¿Por qué existe `AppProviders`?** El sitio se genera como HTML estático en el build, donde no
-existe `localStorage`. Si los stores leyeran `localStorage` al cargar, el HTML del servidor y el
-primer render del navegador no coincidirían (error de hidratación de React). Por eso los stores
-usan `skipHydration: true` y `AppProviders` los rehidrata en un `useEffect`, mostrando un loader
-mientras tanto.
+### 5.4 Datos simulados
 
-### 5.4 Idiomas (inglés y español)
+- Cada colección se guarda en `localStorage` como `ws-notifier:db:<colección>`
+  (`LocalStorageCollection`). La primera lectura usa los datos semilla.
+- **Para empezar de cero**: en las herramientas del navegador → *Application* → *Local Storage*,
+  borra las claves que empiezan por `ws-notifier:`.
+- **Latencia**: cambia `DEFAULT_API_DELAY_MS` en `src/shared/infrastructure/delay.ts`.
 
-- `src/i18n/dictionaries/en.ts` define todos los textos; `es.ts` está tipado con `Dictionary`,
-  así que **TypeScript marca error si falta o sobra una clave**.
+### 5.5 Idiomas
+
+- `src/shared/i18n/dictionaries/en.ts` define todos los textos; `es.ts` está tipado con
+  `Dictionary`, así que TypeScript marca error si falta o sobra una clave.
 - En un componente: `const t = useTranslations();` y luego `t.products.title`.
-- Los textos con variables son funciones: `t.dashboard.welcome("Ana")`.
-- El idioma elegido se guarda en `localStorage` (`ws-notifier:locale`). Por defecto, inglés.
+- `translateError(t, appError)` y `translateFieldError(t, fieldError)` traducen errores por código.
 
-### 5.5 Módulo de productos
+### 5.6 Módulo de productos
 
-- **Listado** (`ProductsTable`): carga la lista al montarse, con búsqueda por nombre/SKU/categoría,
-  precio formateado como moneda, aviso de "agotado" y eliminación con confirmación en la fila.
-- **Formulario** (`ProductForm`): sirve para crear y editar. Valida antes de enviar (mensajes por
-  campo), acepta coma o punto decimal y muestra los errores de la API (p. ej. SKU repetido).
-- **Edición**: la URL es `/dashboard/products/edit?id=p1`. No usamos `/products/[id]` porque con
-  `output: "export"` las rutas dinámicas deben conocerse en el build, y nuestros productos se crean
-  en el navegador.
-- **Validación compartida** (`src/lib/validation/product.ts`): la usan el formulario *y* la API,
-  igual que en una app real donde el servidor nunca confía en el cliente.
+- **Listado**: carga con *list-products*, busca con *search-products* (300 ms después de la última
+  tecla) y elimina con confirmación usando *delete-product*.
+- **Edición**: `/dashboard/products/edit?id=p1`. No usamos `/products/[id]` porque con
+  `output: "export"` las rutas dinámicas deben conocerse en el build.
 
-### 5.6 Agregar más componentes de shadcn/ui
+### 5.7 Agregar componentes de shadcn/ui
 
-El archivo `components.json` ya está configurado, así que puedes agregar componentes oficiales:
+`components.json` ya apunta a la nueva estructura:
 
 ```bash
 pnpm dlx shadcn@latest add dialog select
 ```
 
-Se copiarán en `src/components/ui/`. Nota: `card.tsx` está adaptado para que `CardTitle` sea un
-`<h2>` (mejor accesibilidad).
+Se copiarán en `src/shared/presentation/ui/`.
 
 ---
 
@@ -214,83 +331,78 @@ Se copiarán en `src/components/ui/`. Nota: `card.tsx` está adaptado para que `
 pnpm test           # todos, una vez
 pnpm test:watch     # modo observador
 pnpm test:coverage  # con informe de cobertura
-pnpm test login     # solo los archivos cuyo nombre contiene "login"
+pnpm test create-product   # solo los archivos cuyo nombre contiene "create-product"
 ```
 
 ### 6.1 Herramientas
 
-- **Vitest**: ejecuta los tests (`describe`, `it`, `expect`, `vi.fn()`...). Es compatible con la
-  sintaxis de Jest pero usa la configuración de Vite, por eso es muy rápido.
+- **Vitest**: ejecuta los tests (`describe`, `it`, `expect`, `vi.fn()`...).
 - **jsdom**: simula un navegador dentro de Node (`document`, `window`, `localStorage`).
-- **Testing Library** (`@testing-library/react`): renderiza componentes y los busca **como lo haría
-  una persona**: por rol (`button`, `heading`, `alert`), por etiqueta (`getByLabelText("Price")`) o
-  por texto visible. Nunca por clases CSS.
-- **user-event**: simula escritura y clics reales (foco, teclado, eventos en orden).
-- **jest-dom**: matchers legibles como `toBeInTheDocument()`, `toBeDisabled()`, `toHaveValue()`.
+- **Testing Library**: renderiza componentes y los busca como una persona (por rol, etiqueta o texto).
+- **user-event**: simula escritura, clics y tabulaciones reales (necesario para probar el *blur*).
+- **jest-dom**: matchers como `toBeInTheDocument()`, `toBeDisabled()`, `toHaveFocus()`.
 
-### 6.2 La configuración, paso a paso
+### 6.2 La configuración
 
-- `vitest.config.mts`: entorno `jsdom`, alias `@/` igual que en `tsconfig.json`, archivo de setup y
-  qué entra en la cobertura.
-- `vitest.setup.ts` (se ejecuta antes de cada archivo de test):
-  1. Carga los matchers de jest-dom.
-  2. **Reemplaza `next/navigation`** por un router falso (`src/test/router-mock.ts`). Fuera de
-     Next.js no existe un router real; con el falso podemos comprobar
-     `expect(routerMock.replace).toHaveBeenCalledWith("/dashboard")`.
-  3. Reemplaza `next/link` por un `<a>` normal.
-  4. Antes de **cada** test llama a `resetAppState()`: stores en su estado inicial, `localStorage`
-     vacío y **latencia 0** (para que los tests no tarden 1 s por llamada).
+- `vitest.config.mts`: entorno `jsdom`, alias `@/` y archivo de setup.
+- `vitest.setup.ts`, antes de cada archivo de test:
+  1. carga los matchers de jest-dom;
+  2. reemplaza `next/navigation` por un router falso (`src/test/router-mock.ts`);
+  3. reemplaza `next/link` por un `<a>`;
+  4. antes de **cada** test llama a `resetAppState()`: stores limpios, `localStorage` vacío y
+     **latencia 0**.
 
-> **Regla de oro:** cada test debe poder ejecutarse solo y en cualquier orden. Por eso se
-> resetea todo antes de cada uno.
+### 6.3 La pirámide de tests de este proyecto
 
-### 6.3 Qué prueba cada archivo
-
-| Archivo | Tipo | Qué verifica |
-| --- | --- | --- |
-| `lib/mock-api/__tests__/delay.test.ts` | Unitario | Que la API espera **exactamente 1 s**, usando *fake timers* (`vi.useFakeTimers()` + `vi.advanceTimersByTimeAsync()`) para no esperar de verdad |
-| `lib/mock-api/__tests__/auth-api.test.ts` | Unitario | Login correcto devuelve usuario + token y **nunca la contraseña**; credenciales malas → `INVALID_CREDENTIALS` |
-| `lib/mock-api/__tests__/products-api.test.ts` | Unitario | CRUD completo, persistencia en `localStorage`, SKU único (sin importar mayúsculas), `NOT_FOUND` y validación del lado de la "API" |
-| `lib/validation/__tests__/product.test.ts` | Unitario | Cada regla de validación con `it.each` (una tabla de casos en un solo test) |
-| `stores/__tests__/auth-store.test.ts` | Store | Estados `loading` → `idle`/`error`, sesión guardada por `persist`, logout |
-| `stores/__tests__/products-store.test.ts` | Store | `fetch`, crear, editar y eliminar actualizan `items`; los errores vuelven como `{ ok: false, errorCode }` |
-| `i18n/__tests__/dictionaries.test.ts` | Unitario | Inglés y español tienen las mismas claves; traducción de códigos de error |
-| `components/auth/__tests__/login-form.test.tsx` | Componente | Campos obligatorios, error de credenciales, botón deshabilitado mientras carga, redirección y cambio de idioma |
-| `components/auth/__tests__/auth-guard.test.tsx` | Componente | Sin sesión redirige a `/login`; con sesión muestra el contenido |
-| `components/products/__tests__/products-table.test.tsx` | Componente | Estado de carga, tabla, moneda, "agotado", búsqueda, confirmación y eliminación, lista vacía, español |
-| `components/products/__tests__/product-form.test.tsx` | Componente | Errores por campo, conversión de datos al enviar, error de la API, modo edición y cancelar |
-
-### 6.4 Patrones que vas a ver en los tests
-
-**AAA (Arrange, Act, Assert)**: preparar → ejecutar → verificar.
-
-```ts
-it("login incorrecto: no inicia sesión", async () => {
-  // Arrange: (el estado ya está limpio gracias al setup)
-  // Act
-  const success = await useAuthStore.getState().login("admin", "bad-password");
-  // Assert
-  expect(success).toBe(false);
-});
+```
+              ▲  Componentes (LoginForm, ProductForm, ProductsTable, AuthGuard)
+             ▲▲▲ Stores (integración: store → contenedor → caso de uso → adaptador real)
+           ▲▲▲▲▲ Adaptadores (localStorage, gateway simulado)
+        ▲▲▲▲▲▲▲▲ Casos de uso (con InMemoryProductRepository o fakes)
+     ▲▲▲▲▲▲▲▲▲▲▲ Dominio (value objects y entidad: funciones puras)
 ```
 
-**`getBy` / `queryBy` / `findBy`**:
+Cuanto más abajo, más tests, más rápidos y más fáciles de escribir. Es la gran ventaja de la
+arquitectura: **la lógica se prueba sin React, sin localStorage y sin esperar**.
 
-| Consulta | Si no encuentra el elemento | Úsala cuando... |
+### 6.4 Qué prueba cada archivo
+
+| Archivo | Capa | Qué verifica |
 | --- | --- | --- |
-| `getByRole(...)` | Falla el test | El elemento ya debe estar en pantalla |
-| `queryByText(...)` | Devuelve `null` | Quieres comprobar que algo **no** aparece |
-| `await findByRole(...)` | Espera hasta ~1 s y luego falla | El elemento aparece después de una llamada a la API |
+| `shared/domain/__tests__/result.test.ts` | Compartido | `ok`/`fail` y el *narrowing* de TypeScript |
+| `shared/infrastructure/__tests__/simulated-api-call.test.ts` | Compartido | La espera de **exactamente 1 s** (fake timers) y que una excepción se convierte en `UNKNOWN` |
+| `shared/i18n/__tests__/dictionaries.test.ts` | Compartido | Mismas claves en inglés y español; traducción de `AppError` |
+| `products/domain/__tests__/value-objects.test.ts` | Dominio | Reglas de `Sku`, `Price`, `Stock`, `ProductName`, `Category` con `it.each` |
+| `products/domain/__tests__/product.entity.test.ts` | Dominio | Creación, inmutabilidad de `update()`, `matches()`, registros corruptos |
+| `products/application/use-cases/*/*.use-case.test.ts` | Aplicación | Cada caso de uso: camino feliz, SKU repetido, `PRODUCT_NOT_FOUND`, validación |
+| `products/infrastructure/__tests__/local-storage-product.repository.test.ts` | Infraestructura | Semilla, insertar, *upsert*, `existsBySku` con exclusión, eliminar |
+| `products/presentation/__tests__/products.store.test.ts` | Presentación | Estados `loading` → `success`, búsqueda, crear y eliminar de punta a punta |
+| `products/presentation/__tests__/product-form.test.tsx` | Presentación | Validación al salir del campo, al revalidar y al enviar; foco; errores de la API por campo |
+| `products/presentation/__tests__/products-table.test.tsx` | Presentación | Carga, moneda, agotado, búsqueda con debounce, eliminar, lista vacía, español |
+| `auth/domain/__tests__/credentials.test.ts` | Dominio | `Username`, `Password` y `Credentials` |
+| `auth/application/use-cases/*/*.use-case.test.ts` | Aplicación | login, logout y get-current-session con fakes de sus puertos |
+| `auth/infrastructure/__tests__/auth-adapters.test.ts` | Infraestructura | Gateway simulado (sin exponer la contraseña) y sesión en localStorage |
+| `auth/presentation/__tests__/auth.store.test.ts` | Presentación | Login, error, restaurar sesión tras "recargar", logout |
+| `auth/presentation/__tests__/login-form.test.tsx` | Presentación | Validación al salir del campo, foco, error de credenciales, carga, idioma |
+| `auth/presentation/__tests__/auth-guard.test.tsx` | Presentación | Redirige sin sesión; muestra el contenido con sesión |
 
-**Probar un store sin componentes**: `useProductsStore.getState().fetchProducts()` para ejecutar
-acciones y `useProductsStore.setState({...})` para preparar un escenario (por ejemplo, simular una
-sesión iniciada en `auth-guard.test.tsx`).
+### 6.5 Patrones que vas a ver
 
-**Funciones falsas (`vi.fn()`)**: en `product-form.test.tsx` el `onSubmit` es falso; así probamos
-el formulario aislado y verificamos con qué datos lo llamó (`toHaveBeenCalledWith`).
+**Fakes de un puerto.** Como cada caso de uso tiene su puerto pequeño, el fake se escribe en
+el propio test con 2 o 3 métodos:
 
-**Fake timers**: en `delay.test.ts` controlamos el reloj para probar el segundo de espera en
-milisegundos reales.
+```ts
+const fake: CreateProductRepository = { nextId: () => "id", existsBySku: vi.fn(), save: vi.fn() };
+const result = await new CreateProductUseCase(fake).execute({ ...input, price: 0 });
+expect(fake.save).not.toHaveBeenCalled(); // el dominio rechazó el precio antes de guardar
+```
+
+**`getBy` / `queryBy` / `findBy`**: `getBy` exige que el elemento esté ya; `queryBy` devuelve
+`null` (para comprobar que **no** aparece); `await findBy` espera a que aparezca (tras validar
+o tras la API).
+
+**Fake timers** (`simulated-api-call.test.ts`): controlamos el reloj para probar el segundo de
+espera sin esperarlo.
 
 ---
 
@@ -338,13 +450,15 @@ Vercel **no** ejecuta los tests: de eso se encarga la CI. Con la protección de 
 
 ## 9. Ejercicios y próximos pasos
 
-- **Fase 2 – Ventas**: crea `src/app/dashboard/sales/`, una API `sales-api.ts`, un store y sus
-  tests siguiendo el mismo patrón que productos. Activa el elemento "Sales" en `NAV_ITEMS`
-  (`src/components/layout/dashboard-shell.tsx`).
+- **Fase 2 – Ventas**: crea `src/modules/sales/` con la misma estructura (dominio, casos de uso con
+  su puerto, adaptador, `sales.container.ts`, presentación) y activa "Sales" en `NAV_ITEMS`
+  (`src/app-shell/dashboard-shell.tsx`). Registrar una venta descontará stock: buen momento para
+  practicar un **servicio de dominio** o **eventos de dominio** en lugar de que un caso de uso llame a otro.
+- Crea un `HttpProductRepository` (aunque apunte a una API falsa) y cámbialo en `products.container.ts`:
+  ningún caso de uso ni componente debería cambiar.
+- Agrega un caso de uso "duplicar producto" siguiendo la receta de la sección 4.5.
 - Agrega un tercer idioma: crea su diccionario y añádelo a `SUPPORTED_LOCALES`.
-- Agrega paginación u ordenamiento por columnas a la tabla de productos (y su test).
-- Cambia la latencia en `src/lib/mock-api/delay.ts` para ver cómo se comporta la UI con una red lenta.
-- Sustituye la API simulada por un backend real cambiando solo `src/lib/mock-api/*`.
+- Rompe a propósito una regla de capas (importa React en `domain/`) y mira cómo falla `pnpm lint`.
 
 - Practiqué el flujo de PR 🎉💅💅
 - Practiqué el flujo de PR parte B🎉🎉🎉
