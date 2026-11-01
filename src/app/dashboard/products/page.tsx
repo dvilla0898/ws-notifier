@@ -3,10 +3,10 @@
 import Link from "next/link";
 import { Plus } from "lucide-react";
 
-import { PageHeader } from "@/components/layout/page-header";
-import { ProductsTable } from "@/components/products/products-table";
-import { Button } from "@/components/ui/button";
-import { useTranslations } from "@/i18n/use-translations";
+import { PageHeader } from "@/shared/presentation/components/page-header";
+import { ProductsTable } from "@/modules/products/presentation/components/products-table";
+import { Button } from "@/shared/presentation/ui/button";
+import { useTranslations } from "@/shared/i18n/use-translations";
 
 export default function ProductsPage() {
   const t = useTranslations();

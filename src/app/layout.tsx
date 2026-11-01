@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
-import { AppProviders } from "@/components/providers/app-providers";
+import { AppProviders } from "@/app-shell/app-providers";
 
 import "./globals.css";
 
