@@ -9,7 +9,7 @@ import { DB_PREFIX } from "@/shared/infrastructure/local-storage-collection";
 import { ProductsTable } from "../components/products-table";
 
 /**
- * La pantalla dibuja DOS vistas: tarjetas (móvil) y tabla (escritorio).
+ * La pantalla dibuja DOS vistas: tarjetas (móvil/tablet) y tabla (escritorio, ≥ 1024 px).
  * jsdom no aplica CSS, así que ambas existen en el DOM del test. Por eso cada
  * consulta se hace DENTRO de una de las dos vistas con `within(...)`.
  */
@@ -49,7 +49,7 @@ describe("<ProductsTable />", () => {
     expect(within(rowOf(table, "Laptop Stand")).getByText("Out of stock")).toBeInTheDocument();
   });
 
-  it("tarjetas (móvil): una tarjeta por producto con sus acciones", async () => {
+  it("tarjetas (móvil/tablet): una tarjeta por producto con sus acciones", async () => {
     const { cards } = await renderLoaded();
 
     const items = within(cards).getAllByRole("listitem");

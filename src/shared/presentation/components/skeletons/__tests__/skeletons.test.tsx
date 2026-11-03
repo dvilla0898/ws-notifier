@@ -26,13 +26,13 @@ describe("skeletons", () => {
     expect(status).toHaveAttribute("aria-busy", "true");
   });
 
-  it("<TableSkeleton> dibuja tarjetas (móvil) y filas (escritorio) con la forma pedida", () => {
+  it("<TableSkeleton> dibuja tarjetas (móvil/tablet) y filas (escritorio) con la forma pedida", () => {
     render(<TableSkeleton label="Loading" rows={3} columns={4} />);
 
     const cards = screen.getByTestId("skeleton-cards");
     const table = screen.getByTestId("skeleton-table");
-    expect(cards).toHaveClass("md:hidden");
-    expect(table).toHaveClass("hidden", "md:block");
+    expect(cards).toHaveClass("lg:hidden");
+    expect(table).toHaveClass("hidden", "lg:block");
     expect(cards.children).toHaveLength(3);
     // 1 encabezado + 3 filas, y cada una con 4 columnas
     expect(table.children).toHaveLength(4);

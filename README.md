@@ -321,12 +321,12 @@ Las clases sin prefijo son para móvil y los prefijos agregan cambios en pantall
 | Pieza | Móvil (< 768 px) | Tablet / escritorio (≥ 768 px) |
 | --- | --- | --- |
 | Navegación (`app-shell/dashboard-shell.tsx`) | Barra superior + botón ☰ que abre un panel lateral (`Sheet`) con menú, usuario, idioma y salir | Menú lateral fijo + cabecera |
-| Productos (`products-table.tsx`) | Una tarjeta por producto | Tabla |
+| Productos (`products-table.tsx`) | Una tarjeta por producto (también en tablet: con el menú lateral, la tabla no cabe hasta 1024 px) | Tabla (≥ 1024 px) |
 | Eliminar | Diálogo de confirmación (`delete-product-dialog.tsx`) | El mismo diálogo |
 | Formularios | Botones apilados a ancho completo | Botones en fila a la derecha |
 | Botones | Al menos ~44 px de alto (táctil) | Tamaño compacto |
 
-Las tarjetas y la tabla se renderizan **las dos** y el CSS (`md:hidden` / `hidden md:block`) muestra
+Las tarjetas y la tabla se renderizan **las dos** y el CSS (`lg:hidden` / `hidden lg:block`) muestra
 la que corresponde. Así el HTML estático y el navegador coinciden y nada "salta" al cargar.
 
 ### 5.8 Skeletons (estados de carga)
@@ -337,7 +337,7 @@ En lugar de un spinner, mientras la API responde se muestra la **forma** del con
   no se anima si el usuario pidió *reducir el movimiento* en su sistema.
 - `shared/presentation/components/skeletons/`:
   - `LoadingRegion`: envoltorio accesible (`role="status"`, `aria-busy`, texto oculto para lectores de pantalla);
-  - `TableSkeleton`: listados (tarjetas en móvil, filas en escritorio), con `rows` y `columns`;
+  - `TableSkeleton`: listados (tarjetas en móvil/tablet, filas en escritorio), con `rows` y `columns`;
   - `FormSkeleton`: formularios, con `fields`.
 
 ```tsx

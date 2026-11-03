@@ -77,7 +77,8 @@ function StockValue({ product, t }: { product: ProductDto; t: Dictionary }) {
  * Casos de uso (a través del store): list-products al montarse, search-products al
  * escribir (con debounce) y delete-product al confirmar en el diálogo.
  *
- * Vista responsive: tarjetas en móvil (< md) y tabla en escritorio (≥ md).
+ * Vista responsive: tarjetas hasta tablet (< lg, 1024 px) y tabla en escritorio (≥ lg).
+ * En tablet (768 px) el menú lateral deja ~480 px: la tabla de 6 columnas no cabe.
  * Ambas se renderizan y el CSS muestra la que corresponde; así no hay saltos
  * al cargar la página ni diferencias entre el HTML estático y el navegador.
  */
@@ -150,7 +151,7 @@ export function ProductsTable() {
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="px-4 sm:px-6">
         <Label htmlFor="product-search" className="sr-only">
           {t.products.search}
         </Label>
@@ -178,7 +179,7 @@ export function ProductsTable() {
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-4 px-4 sm:px-6">
         {actionError && (
           <p role="alert" className="text-sm text-destructive">
             {actionError}
@@ -191,8 +192,8 @@ export function ProductsTable() {
           <p className="py-8 text-center text-sm text-muted-foreground">{t.products.noResults}</p>
         ) : (
           <>
-            {/* Móvil: una tarjeta por producto */}
-            <ul aria-label={t.products.title} className="space-y-3 md:hidden">
+            {/* Móvil y tablet: una tarjeta por producto */}
+            <ul aria-label={t.products.title} className="space-y-3 lg:hidden">
               {visible.map((product) => (
                 <li key={product.id} className="rounded-lg border p-4">
                   <div className="flex items-start justify-between gap-3">
@@ -216,7 +217,7 @@ export function ProductsTable() {
             </ul>
 
             {/* Escritorio: tabla */}
-            <div className="hidden md:block">
+            <div className="hidden lg:block">
               <Table>
                 <TableHeader>
                   <TableRow>
