@@ -113,13 +113,14 @@ export function ProductForm({ initialValues, submitLabel, onSubmit, onCancel }: 
           </p>
         )}
 
-        <div className="flex justify-end gap-2">
+        {/* Móvil: botones apilados a ancho completo (Guardar arriba). Desde sm: en fila a la derecha. */}
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           {onCancel && (
-            <Button type="button" variant="outline" onClick={onCancel}>
+            <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={onCancel}>
               {t.common.cancel}
             </Button>
           )}
-          <Button type="submit">
+          <Button type="submit" className="w-full sm:w-auto">
             {isSubmitting && <Spinner />}
             {isSubmitting ? t.common.saving : submitLabel}
           </Button>

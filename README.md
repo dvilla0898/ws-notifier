@@ -34,7 +34,7 @@ y tarda **1 segundo** en responder para imitar un servidor real.
 | Lenguaje | **TypeScript** | Tipos para entidades, value objects, DTOs y traducciones |
 | Arquitectura | **Hexagonal / Clean Architecture** | Dominio aislado, un caso de uso por acción, adaptadores intercambiables |
 | Estilos | **Tailwind CSS v4** | Clases utilitarias (`flex`, `gap-4`, `text-sm`...) |
-| Componentes | **shadcn/ui** | Botones, inputs, tarjetas y tablas accesibles. El código vive en `src/shared/presentation/ui` y es tuyo |
+| Componentes | **shadcn/ui** + **Radix** | Botones, inputs, tarjetas, tablas, diálogos y panel lateral accesibles. El código vive en `src/shared/presentation/ui` y es tuyo |
 | Formularios | **react-hook-form** | Estado del formulario y validación al salir del campo, con las reglas del dominio |
 | Estado de pantalla | **Zustand** | Stores pequeños por módulo: cargando, lista, errores |
 | Datos | **JSON + localStorage** | Datos semilla en `src/modules/*/infrastructure/seed/*.json`; los cambios persisten al recargar |
@@ -313,7 +313,42 @@ así cambian de idioma aunque el formulario esté abierto.
 - **Edición**: `/dashboard/products/edit?id=p1`. No usamos `/products/[id]` porque con
   `output: "export"` las rutas dinámicas deben conocerse en el build.
 
-### 5.7 Agregar componentes de shadcn/ui
+### 5.7 Diseño responsive
+
+Se usan los *breakpoints* de Tailwind: base (móvil) → `sm` (640 px) → `md` (768 px, tablet) → `lg`.
+Las clases sin prefijo son para móvil y los prefijos agregan cambios en pantallas más grandes.
+
+| Pieza | Móvil (< 768 px) | Tablet / escritorio (≥ 768 px) |
+| --- | --- | --- |
+| Navegación (`app-shell/dashboard-shell.tsx`) | Barra superior + botón ☰ que abre un panel lateral (`Sheet`) con menú, usuario, idioma y salir | Menú lateral fijo + cabecera |
+| Productos (`products-table.tsx`) | Una tarjeta por producto (también en tablet: con el menú lateral, la tabla no cabe hasta 1024 px) | Tabla (≥ 1024 px) |
+| Eliminar | Diálogo de confirmación (`delete-product-dialog.tsx`) | El mismo diálogo |
+| Formularios | Botones apilados a ancho completo | Botones en fila a la derecha |
+| Botones | Al menos ~44 px de alto (táctil) | Tamaño compacto |
+
+Las tarjetas y la tabla se renderizan **las dos** y el CSS (`lg:hidden` / `hidden lg:block`) muestra
+la que corresponde. Así el HTML estático y el navegador coinciden y nada "salta" al cargar.
+
+### 5.8 Skeletons (estados de carga)
+
+En lugar de un spinner, mientras la API responde se muestra la **forma** del contenido que va a llegar.
+
+- `shared/presentation/ui/skeleton.tsx`: el bloque base (pulso suave). Usa `motion-safe:`, así que
+  no se anima si el usuario pidió *reducir el movimiento* en su sistema.
+- `shared/presentation/components/skeletons/`:
+  - `LoadingRegion`: envoltorio accesible (`role="status"`, `aria-busy`, texto oculto para lectores de pantalla);
+  - `TableSkeleton`: listados (tarjetas en móvil/tablet, filas en escritorio), con `rows` y `columns`;
+  - `FormSkeleton`: formularios, con `fields`.
+
+```tsx
+if (status === "loading") return <TableSkeleton label={t.products.loading} columns={6} />;
+```
+
+**Cuándo NO usar skeleton:** acciones cortas de un botón (Guardar, Entrar, Eliminar) y la búsqueda
+mantienen el spinner dentro del botón o junto al buscador. Las redirecciones instantáneas
+(abrir la app, ir de `/` a `/login`) siguen con `LoadingState`, porque duran milisegundos.
+
+### 5.9 Agregar componentes de shadcn/ui
 
 `components.json` ya apunta a la nueva estructura:
 
@@ -378,7 +413,9 @@ arquitectura: **la lógica se prueba sin React, sin localStorage y sin esperar**
 | `products/infrastructure/__tests__/local-storage-product.repository.test.ts` | Infraestructura | Semilla, insertar, *upsert*, `existsBySku` con exclusión, eliminar |
 | `products/presentation/__tests__/products.store.test.ts` | Presentación | Estados `loading` → `success`, búsqueda, crear y eliminar de punta a punta |
 | `products/presentation/__tests__/product-form.test.tsx` | Presentación | Validación al salir del campo, al revalidar y al enviar; foco; errores de la API por campo |
-| `products/presentation/__tests__/products-table.test.tsx` | Presentación | Carga, moneda, agotado, búsqueda con debounce, eliminar, lista vacía, español |
+| `products/presentation/__tests__/products-table.test.tsx` | Presentación | Skeleton de carga, tabla y tarjetas, moneda, agotado, búsqueda con debounce, diálogo de eliminar, lista vacía, español |
+| `shared/presentation/components/skeletons/__tests__/skeletons.test.tsx` | Compartido | Skeleton decorativo y `motion-safe`, región accesible, forma de `TableSkeleton` y `FormSkeleton` |
+| `app-shell/__tests__/dashboard-shell.test.tsx` | App shell | Sección activa, panel móvil (abrir, cerrar, salir) |
 | `auth/domain/__tests__/credentials.test.ts` | Dominio | `Username`, `Password` y `Credentials` |
 | `auth/application/use-cases/*/*.use-case.test.ts` | Aplicación | login, logout y get-current-session con fakes de sus puertos |
 | `auth/infrastructure/__tests__/auth-adapters.test.ts` | Infraestructura | Gateway simulado (sin exponer la contraseña) y sesión en localStorage |

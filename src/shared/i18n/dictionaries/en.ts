@@ -18,6 +18,7 @@ export const en = {
     retry: "Retry",
     language: "Language",
     comingSoon: "Soon",
+    close: "Close",
   },
   login: {
     title: "Sign in",
@@ -30,6 +31,8 @@ export const en = {
   },
   nav: {
     main: "Main navigation",
+    openMenu: "Open menu",
+    menu: "Menu",
     dashboard: "Dashboard",
     products: "Products",
     sales: "Sales",
@@ -57,7 +60,10 @@ export const en = {
     empty: "There are no products yet.",
     noResults: "No products match your search.",
     outOfStock: "Out of stock",
-    deleteConfirm: (name: string) => `Delete "${name}"?`,
+    deleteTitle: "Delete product?",
+    deleteDescription: (name: string) =>
+      `"${name}" will be permanently deleted. This action cannot be undone.`,
+    deleting: "Deleting...",
     backToList: "Back to products",
     columns: {
       name: "Name",

@@ -17,7 +17,7 @@ export default function ProductsPage() {
         title={t.products.title}
         description={t.products.subtitle}
         actions={
-          <Button asChild>
+          <Button asChild className="w-full sm:w-auto">
             <Link href="/dashboard/products/new">
               <Plus aria-hidden="true" />
               {t.products.newProduct}
