@@ -14,6 +14,7 @@ export const es: Dictionary = {
     retry: "Reintentar",
     language: "Idioma",
     comingSoon: "Pronto",
+    close: "Cerrar",
   },
   login: {
     title: "Iniciar sesión",
@@ -26,6 +27,8 @@ export const es: Dictionary = {
   },
   nav: {
     main: "Navegación principal",
+    openMenu: "Abrir menú",
+    menu: "Menú",
     dashboard: "Inicio",
     products: "Productos",
     sales: "Ventas",
@@ -53,7 +56,10 @@ export const es: Dictionary = {
     empty: "Todavía no hay productos.",
     noResults: "Ningún producto coincide con tu búsqueda.",
     outOfStock: "Agotado",
-    deleteConfirm: (name: string) => `¿Eliminar "${name}"?`,
+    deleteTitle: "¿Eliminar producto?",
+    deleteDescription: (name: string) =>
+      `"${name}" se eliminará de forma permanente. Esta acción no se puede deshacer.`,
+    deleting: "Eliminando...",
     backToList: "Volver a productos",
     columns: {
       name: "Nombre",

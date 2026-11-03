@@ -9,7 +9,7 @@ import { useProductsStore } from "@/modules/products/presentation/products.store
 import { AppError } from "@/shared/domain/app-error";
 import { translateError } from "@/shared/i18n/translate-error";
 import { useTranslations } from "@/shared/i18n/use-translations";
-import { LoadingState } from "@/shared/presentation/components/loading-state";
+import { FormSkeleton } from "@/shared/presentation/components/skeletons";
 import { Button } from "@/shared/presentation/ui/button";
 import { Card, CardContent } from "@/shared/presentation/ui/card";
 
@@ -67,7 +67,7 @@ export function EditProductView() {
   }
 
   if (state.status === "loading") {
-    return <LoadingState label={t.products.loadingOne} />;
+    return <FormSkeleton label={t.products.loadingOne} />;
   }
 
   const { product } = state;
